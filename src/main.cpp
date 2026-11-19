@@ -138,8 +138,12 @@ static void drawPredictedPath(CCNode* objLayer, SimPath const& path, bool danger
     }
 }
 
+static bool botIsOn() {
+    return g_botEnabled && modBool("enabled");
+}
+
 static char const* toggleLabel() {
-    return g_botEnabled ? "PF: ON" : "PF: OFF";
+    return botIsOn() ? "PF: ON" : "PF: OFF";
 }
 
 static void refreshToggleButton() {
@@ -151,7 +155,7 @@ static void refreshToggleButton() {
     auto* lbl = dynamic_cast<CCLabelBMFont*>(bg->getChildByID("pathfinder-toggle-label"));
     if (!lbl) return;
     lbl->setString(toggleLabel());
-    lbl->setColor(g_botEnabled ? ccColor3B{50, 255, 100} : ccColor3B{255, 80, 80});
+    lbl->setColor(botIsOn() ? ccColor3B{50, 255, 100} : ccColor3B{255, 80, 80});
 }
 
 // Small persistent corner button so the bot can be toggled on phone too.
@@ -170,7 +174,7 @@ static void ensureToggleMenu(PlayLayer* pl, ToggleSel target, SEL_MenuHandler se
         lbl->setScale(0.42f);
         lbl->setID("pathfinder-toggle-label");
         lbl->setPosition({ 42.f, 14.f });
-        lbl->setColor(g_botEnabled ? ccColor3B{50, 255, 100} : ccColor3B{255, 80, 80});
+        lbl->setColor(botIsOn() ? ccColor3B{50, 255, 100} : ccColor3B{255, 80, 80});
         bg->addChild(lbl, 1);
 
         auto* btn = CCMenuItemSpriteExtra::create(bg, target, sel);
@@ -179,11 +183,15 @@ static void ensureToggleMenu(PlayLayer* pl, ToggleSel target, SEL_MenuHandler se
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         g_toggleMenu->setPosition(winSize.width - 52.f, 26.f);
+        g_toggleMenu->setVisible(modBool("show-button"));
+        log::info("[Pathfinder] Created toggle button at ({}, {})", winSize.width - 52.f, 26.f);
     }
     if (g_toggleMenu->getParent() != pl) {
         if (g_toggleMenu->getParent()) g_toggleMenu->removeFromParentAndCleanup(false);
         pl->addChild(g_toggleMenu, 1000);
+        log::info("[Pathfinder] Added toggle button to PlayLayer (z=1000)");
     }
+    g_toggleMenu->setVisible(modBool("show-button"));
 }
 
 class $modify(PathfinderPlayLayer, PlayLayer) {
@@ -202,7 +210,9 @@ class $modify(PathfinderPlayLayer, PlayLayer) {
 
         ensureToggleMenu(this, this, menu_selector(PathfinderPlayLayer::onPathfinderToggle));
 
-        if (!g_botEnabled) {
+        bool botOn = g_botEnabled && modBool("enabled");
+
+        if (!botOn) {
             if (g_pathNode && g_pathNode->getParent()) g_pathNode->clear();
             return;
         }

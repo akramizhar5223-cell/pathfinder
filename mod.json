@@ -11,6 +11,18 @@
   "description": "Predictive path-simulation autoplay bot. Simulates your cube's trajectory ahead of it and jumps before it hits hazards. Experimental.",
   "tags": ["bot", "cheat", "gameplay"],
   "settings": {
+    "enabled": {
+      "name": "Bot Enabled",
+      "description": "Master switch for the Pathfinder bot. Toggle in the Geode menu in-game — no corner button required.",
+      "type": "bool",
+      "default": true
+    },
+    "show-button": {
+      "name": "Show Corner Button",
+      "description": "Show the PF ON/OFF button in the bottom-right corner of the level",
+      "type": "bool",
+      "default": true
+    },
     "lookahead": {
       "name": "Lookahead Distance",
       "description": "How far ahead (in pixels) the simulator scans for hazards",

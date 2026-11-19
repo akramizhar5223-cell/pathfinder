@@ -7,7 +7,8 @@ path drawn right on screen.
 
 ## Controls
 
-- **Pause menu** — "Pathfinder: ON/OFF" button, works on all platforms
+- **Geode menu → Pathfinder → "Bot Enabled"** — master switch, works everywhere with no extra UI
+- **Corner button** — "PF: ON/OFF" in the bottom-right of the level (can be hidden with "Show Corner Button")
 - **B** — toggle on PC
 
 ## Settings

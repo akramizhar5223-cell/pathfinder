@@ -1,0 +1,61 @@
+{
+  "geode": "5.10.0",
+  "gd": {
+    "win": "2.2081",
+    "android": "2.2081"
+  },
+  "id": "pathfinder.bot",
+  "name": "Pathfinder",
+  "version": "1.0.0",
+  "developer": "Pathfinder",
+  "description": "Predictive path-simulation autoplay bot. Simulates your cube's trajectory ahead of it and jumps before it hits hazards. Experimental.",
+  "tags": ["bot", "cheat", "gameplay"],
+  "settings": {
+    "lookahead": {
+      "name": "Lookahead Distance",
+      "description": "How far ahead (in pixels) the simulator scans for hazards",
+      "type": "float",
+      "default": 260.0,
+      "min": 60.0,
+      "max": 600.0
+    },
+    "sim-time": {
+      "name": "Simulation Time (s)",
+      "description": "How many seconds into the future the path is simulated",
+      "type": "float",
+      "default": 1.5,
+      "min": 0.3,
+      "max": 4.0
+    },
+    "gravity": {
+      "name": "Gravity (px/s^2)",
+      "description": "Downward acceleration used by the simulator. Community estimate for cube mode is ~1185 (39.5 blocks * 30 px). Tune to your GD version if needed.",
+      "type": "float",
+      "default": 1185.0,
+      "min": 100.0,
+      "max": 4000.0
+    },
+    "jump-velocity": {
+      "name": "Jump Velocity (px/s)",
+      "description": "Upward impulse applied when the bot decides to jump. Community estimate; tune to your GD version if needed.",
+      "type": "float",
+      "default": 460.0,
+      "min": 100.0,
+      "max": 1500.0
+    },
+    "move-speed": {
+      "name": "Move Speed (px/s)",
+      "description": "Horizontal speed assumed by the simulator. GD's normal cube speed is community-estimated around 311 px/s (10.4 blocks). Tune to your GD version if needed.",
+      "type": "float",
+      "default": 311.0,
+      "min": 50.0,
+      "max": 1200.0
+    },
+    "show-path": {
+      "name": "Show Predicted Path",
+      "description": "Draw the simulated trajectory on the level (green = chosen path, red = predicted to hit a hazard)",
+      "type": "bool",
+      "default": true
+    }
+  }
+}

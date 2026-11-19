@@ -1,6 +1,5 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
-#include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/CCKeyboardDispatcher.hpp>
 
 #include <vector>
@@ -112,8 +111,9 @@ static SimPath simulate(
     return path;
 }
 
-// Path rendering node (retained once, re-added to whatever object layer is active).
+// Persistent nodes, retained once and re-added to whatever object layer is active.
 static CCDrawNode* g_pathNode = nullptr;
+static CCMenu*     g_toggleMenu = nullptr;
 
 static void drawPredictedPath(CCNode* objLayer, SimPath const& path, bool dangerous) {
     if (!modBool("show-path")) {
@@ -138,22 +138,70 @@ static void drawPredictedPath(CCNode* objLayer, SimPath const& path, bool danger
     }
 }
 
-static void refreshToggleVisual(CCNode* layer) {
-    auto* menu = static_cast<CCMenu*>(layer->getChildByID("pathfinder-menu"));
-    if (!menu) return;
-    auto* btn  = static_cast<CCMenuItemSpriteExtra*>(menu->getChildByID("pathfinder-toggle-btn"));
+static char const* toggleLabel() {
+    return g_botEnabled ? "PF: ON" : "PF: OFF";
+}
+
+static void refreshToggleButton() {
+    if (!g_toggleMenu) return;
+    auto* btn = dynamic_cast<CCMenuItemSpriteExtra*>(g_toggleMenu->getChildByID("pathfinder-toggle-btn"));
     if (!btn) return;
-    auto* bg  = static_cast<CCScale9Sprite*>(btn->getNormalImage());
+    auto* bg = dynamic_cast<CCScale9Sprite*>(btn->getNormalImage());
     if (!bg) return;
-    auto* lbl = static_cast<CCLabelBMFont*>(bg->getChildren()->objectAtIndex(0));
+    auto* lbl = dynamic_cast<CCLabelBMFont*>(bg->getChildByID("pathfinder-toggle-label"));
     if (!lbl) return;
-    lbl->setString(g_botEnabled ? "Pathfinder: ON" : "Pathfinder: OFF");
+    lbl->setString(toggleLabel());
     lbl->setColor(g_botEnabled ? ccColor3B{50, 255, 100} : ccColor3B{255, 80, 80});
 }
 
+// Small persistent corner button so the bot can be toggled on phone too.
+template <typename ToggleSel>
+static void ensureToggleMenu(PlayLayer* pl, ToggleSel target, SEL_MenuHandler sel) {
+    if (!g_toggleMenu) {
+        g_toggleMenu = CCMenu::create();
+        g_toggleMenu->retain();
+        g_toggleMenu->setID("pathfinder-toggle-menu");
+
+        auto* bg = CCScale9Sprite::create("GJ_button_01.png");
+        bg->setContentSize({ 84.f, 28.f });
+        bg->setID("pathfinder-toggle-bg");
+
+        auto* lbl = CCLabelBMFont::create(toggleLabel(), "bigFont.fnt");
+        lbl->setScale(0.42f);
+        lbl->setID("pathfinder-toggle-label");
+        lbl->setPosition({ 42.f, 14.f });
+        lbl->setColor(g_botEnabled ? ccColor3B{50, 255, 100} : ccColor3B{255, 80, 80});
+        bg->addChild(lbl, 1);
+
+        auto* btn = CCMenuItemSpriteExtra::create(bg, target, sel);
+        btn->setID("pathfinder-toggle-btn");
+        g_toggleMenu->addChild(btn);
+
+        auto winSize = CCDirector::sharedDirector()->getWinSize();
+        g_toggleMenu->setPosition(winSize.width - 52.f, 26.f);
+    }
+    if (g_toggleMenu->getParent() != pl) {
+        if (g_toggleMenu->getParent()) g_toggleMenu->removeFromParentAndCleanup(false);
+        pl->addChild(g_toggleMenu, 1000);
+    }
+}
+
 class $modify(PathfinderPlayLayer, PlayLayer) {
+    void onPathfinderToggle(CCObject*) {
+        g_botEnabled = !g_botEnabled;
+        g_jumpHeld = false;
+        if (!g_botEnabled && m_player1 && !m_player1->m_isDead) {
+            handleButton(false, 1, false);
+        }
+        refreshToggleButton();
+        log::info("[Pathfinder] Bot {}", g_botEnabled ? "ON" : "OFF");
+    }
+
     void update(float dt) {
         PlayLayer::update(dt);
+
+        ensureToggleMenu(this, this, menu_selector(PathfinderPlayLayer::onPathfinderToggle));
+
         if (!g_botEnabled) {
             if (g_pathNode && g_pathNode->getParent()) g_pathNode->clear();
             return;
@@ -206,52 +254,6 @@ class $modify(PathfinderPlayLayer, PlayLayer) {
     }
 };
 
-class $modify(PathfinderPauseLayer, PauseLayer) {
-    static PauseLayer* create(bool p0) {
-        auto* layer = PauseLayer::create(p0);
-        if (!layer) return layer;
-
-        auto* winSize = CCDirector::sharedDirector()->getWinSize();
-
-        auto* bg = CCScale9Sprite::create("GJ_button_01.png");
-        bg->setContentSize({ 160.f, 36.f });
-
-        auto* lbl = CCLabelBMFont::create(
-            g_botEnabled ? "Pathfinder: ON" : "Pathfinder: OFF",
-            "bigFont.fnt"
-        );
-        lbl->setScale(0.5f);
-        lbl->setColor(g_botEnabled ? ccColor3B{50, 255, 100} : ccColor3B{255, 80, 80});
-        lbl->setPosition({ 80.f, 18.f });
-        bg->addChild(lbl, 1);
-
-        auto* btn = CCMenuItemSpriteExtra::create(bg, static_cast<PathfinderPauseLayer*>(layer), menu_selector(PathfinderPauseLayer::onPathfinderToggle));
-        btn->setID("pathfinder-toggle-btn");
-
-        auto* menu = CCMenu::create();
-        menu->setID("pathfinder-menu");
-        menu->setTouchPriority(-500);
-        menu->addChild(btn);
-        menu->setPosition(winSize.width / 2.f, 30.f);
-        layer->addChild(menu, 500);
-
-        return layer;
-    }
-
-    void onPathfinderToggle(CCObject*) {
-        g_botEnabled = !g_botEnabled;
-        g_jumpHeld = false;
-        if (!g_botEnabled) {
-            auto* pl = PlayLayer::get();
-            if (pl && pl->m_player1 && !pl->m_player1->m_isDead) {
-                pl->handleButton(false, 1, false);
-            }
-        }
-        refreshToggleVisual(this);
-        log::info("[Pathfinder] Bot {}", g_botEnabled ? "ON" : "OFF");
-    }
-};
-
 class $modify(PathfinderKeyboard, CCKeyboardDispatcher) {
     bool dispatchKeyboardMSG(enumKeyCodes key, bool isKeyDown, bool isKeyRepeat, double extra) {
         bool result = CCKeyboardDispatcher::dispatchKeyboardMSG(key, isKeyDown, isKeyRepeat, extra);
@@ -263,6 +265,7 @@ class $modify(PathfinderKeyboard, CCKeyboardDispatcher) {
                 if (!g_botEnabled && pl->m_player1 && !pl->m_player1->m_isDead) {
                     pl->handleButton(false, 1, false);
                 }
+                refreshToggleButton();
                 log::info("[Pathfinder] Bot {}", g_botEnabled ? "ON" : "OFF");
             }
         }
@@ -271,5 +274,5 @@ class $modify(PathfinderKeyboard, CCKeyboardDispatcher) {
 };
 
 $on_mod(Loaded) {
-    log::info("[Pathfinder] v1.0.0 loaded. Toggle in the pause menu, or press B on PC.");
+    log::info("[Pathfinder] v1.0.0 loaded. Toggle with the corner button in-level, or press B on PC.");
 }
